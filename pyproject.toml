@@ -3,7 +3,7 @@ pythonpath = ["."]
 
 [tool.ruff]
 line-length = 110
-extend-exclude = ["notebooks"]
+extend-exclude = ["notebooks", "AI4All_Group_23C_Project_Code.ipynb"]
 
 [tool.ruff.lint]
 select = ["E", "F", "W"]
