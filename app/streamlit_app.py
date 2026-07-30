@@ -1,7 +1,7 @@
 """Streamlit app for screening companies for one-year bankruptcy risk.
 
 Loads artifacts produced by `python -m src.train` and scores user input
-through src.predict.predict_one. Never fits or refits a model.
+through src.predict.predict_one / predict_history. Never fits or refits a model.
 """
 
 import json
@@ -61,7 +61,13 @@ INCOME_FIELDS = [
     "ebitda", "ebit", "dep_amort", "net_income", "total_opex",
 ]
 
-st.set_page_config(page_title="Bankruptcy Risk Screener", layout="wide")
+RISK_CHIP_STYLES = {
+    "Lower Risk": ("#EAF7EE", "#1E7E34", "#BFE6C8"),
+    "Elevated": ("#FFF6E5", "#9A5B00", "#FCE1A8"),
+    "High": ("#FDECEC", "#B3261E", "#F5C2C0"),
+}
+
+st.set_page_config(page_title="Bankruptcy Risk Screener", page_icon="📊", layout="wide")
 
 
 @st.cache_data
@@ -79,101 +85,93 @@ def load_test_scores():
     return dict(np.load(MODELS_DIR / "test_scores.npz"))
 
 
-def apply_example():
-    choice = st.session_state["example_choice"]
-    if choice == MANUAL_LABEL:
-        return
-    examples = load_example_firms()
-    ex = next(e for e in examples if _example_label(e) == choice)
-    for field in RAW_DOLLAR_COLS:
-        st.session_state[f"cur_{field}"] = float(ex["financials"].get(field, 0.0))
-    if ex.get("prev_year"):
-        st.session_state["use_prev"] = True
-        for field in RAW_DOLLAR_COLS:
-            st.session_state[f"prev_{field}"] = float(ex["prev_year"].get(field, 0.0))
-    else:
-        st.session_state["use_prev"] = False
-
-
 def _example_label(example):
     return f"{example['company_name']} ({example['year']}) - {example['scenario']}"
 
 
-st.title("Bankruptcy Risk Screener")
-st.caption(
-    "This tool screens a company's annual financial statement data to estimate "
-    "the likelihood it files for bankruptcy within the next year."
-)
+def _year_columns(n_years):
+    current_year = pd.Timestamp.now().year
+    return [str(y) for y in range(current_year - int(n_years) + 1, current_year + 1)]
 
-tab_screen, tab_perf, tab_about = st.tabs(
-    ["Screen a Company", "Model Performance", "About and Limitations"]
-)
 
-with tab_screen:
+def _blank_grid(fields, year_cols):
+    return pd.DataFrame(0.0, index=[FIELD_LABELS[f] for f in fields], columns=year_cols)
+
+
+def _apply_example_to_history():
+    choice = st.session_state["hist_example_choice"]
+    if choice == MANUAL_LABEL:
+        st.session_state["hist_base_bs"] = None
+        st.session_state["hist_base_inc"] = None
+        return
+
     examples = load_example_firms()
-    example_labels = [MANUAL_LABEL] + [_example_label(e) for e in examples]
-    st.selectbox(
-        "Load an example test-set firm, or enter figures manually below",
-        example_labels, key="example_choice", on_change=apply_example,
+    ex = next(e for e in examples if _example_label(e) == choice)
+    year_cols = _year_columns(st.session_state["hist_num_years"])
+    bs = _blank_grid(BALANCE_SHEET_FIELDS, year_cols)
+    inc = _blank_grid(INCOME_FIELDS, year_cols)
+
+    for field in BALANCE_SHEET_FIELDS:
+        bs.loc[FIELD_LABELS[field], year_cols[-1]] = float(ex["financials"].get(field, 0.0))
+    for field in INCOME_FIELDS:
+        inc.loc[FIELD_LABELS[field], year_cols[-1]] = float(ex["financials"].get(field, 0.0))
+
+    if ex.get("prev_year") and len(year_cols) >= 2:
+        for field in BALANCE_SHEET_FIELDS:
+            bs.loc[FIELD_LABELS[field], year_cols[-2]] = float(ex["prev_year"].get(field, 0.0))
+        for field in INCOME_FIELDS:
+            inc.loc[FIELD_LABELS[field], year_cols[-2]] = float(ex["prev_year"].get(field, 0.0))
+
+    st.session_state["hist_base_bs"] = bs
+    st.session_state["hist_base_inc"] = inc
+    st.session_state["hist_load_version"] = st.session_state.get("hist_load_version", 0) + 1
+
+
+def render_badges(labels):
+    chips = "".join(
+        '<span style="display:inline-block;background:#EEF2FF;color:#2563EB;'
+        "border:1px solid #C7D2FE;border-radius:999px;padding:4px 12px;"
+        f'margin:0 6px 6px 0;font-size:0.8rem;font-weight:600;">{label}</span>'
+        for label in labels
+    )
+    st.markdown(f'<div style="margin-top:-6px;margin-bottom:14px;">{chips}</div>', unsafe_allow_html=True)
+
+
+def _risk_chip_html(risk_band):
+    bg, fg, border = RISK_CHIP_STYLES[risk_band]
+    return (
+        f'<span style="display:inline-block;background:{bg};color:{fg};'
+        f'border:1px solid {border};border-radius:999px;padding:4px 14px;'
+        f'font-size:0.95rem;font-weight:700;">{risk_band}</span>'
     )
 
-    st.markdown("Enter the company's most recent annual financial statement figures.")
-    col1, col2 = st.columns(2)
-    financials = {}
-    with col1:
-        st.markdown("**Balance sheet**")
-        for field in BALANCE_SHEET_FIELDS:
-            financials[field] = st.number_input(
-                FIELD_LABELS[field], key=f"cur_{field}", format="%.3f"
-            )
-    with col2:
-        st.markdown("**Income statement**")
-        for field in INCOME_FIELDS:
-            financials[field] = st.number_input(
-                FIELD_LABELS[field], key=f"cur_{field}", format="%.3f"
-            )
 
-    use_prev = st.checkbox("Include previous year's financials (enables trend features)", key="use_prev")
-    prev_year = None
-    if use_prev:
-        with st.expander("Previous Year Financials", expanded=True):
-            prev_year = {}
-            pcol1, pcol2 = st.columns(2)
-            with pcol1:
-                for field in BALANCE_SHEET_FIELDS:
-                    prev_year[field] = st.number_input(
-                        f"Prior year - {FIELD_LABELS[field]}", key=f"prev_{field}", format="%.3f"
-                    )
-            with pcol2:
-                for field in INCOME_FIELDS:
-                    prev_year[field] = st.number_input(
-                        f"Prior year - {FIELD_LABELS[field]}", key=f"prev_{field}", format="%.3f"
-                    )
-
-    if st.button("Screen this company", type="primary"):
-        st.session_state["last_result"] = predict.predict_one(financials, prev_year)
-
-    if "last_result" in st.session_state:
-        result = st.session_state["last_result"]
-        band_colors = {"Lower Risk": "green", "Elevated": "orange", "High": "red"}
-
-        st.divider()
+def render_result_panel(probability, risk_band, altman_z, altman_zone, plain_language=None):
+    if plain_language is None:
+        plain_language = (
+            f"About {round(probability * 100)} of 100 firms with this profile "
+            f"filed for bankruptcy within a year."
+        )
+    with st.container(border=True):
         c1, c2 = st.columns(2)
         with c1:
-            st.metric("Calibrated bankruptcy probability", f"{result['probability']:.1%}")
-            st.markdown(f"Risk band: :{band_colors[result['risk_band']]}[**{result['risk_band']}**]")
-            st.write(result["plain_language"])
+            st.metric("Calibrated bankruptcy probability", f"{probability:.1%}")
+            st.markdown(_risk_chip_html(risk_band), unsafe_allow_html=True)
+            st.caption(plain_language)
         with c2:
-            st.metric("Altman Z-Score", f"{result['altman_z']:.2f}")
-            st.write(f"Zone: **{result['altman_zone']}**")
+            st.metric("Altman Z-Score", f"{altman_z:.2f}")
+            st.write(f"Zone: **{altman_zone}**")
             st.caption("Zones: distress below 1.81, gray zone 1.81-2.99, safe above 2.99.")
 
+
+def render_shap_waterfall(shap_values, base_value, feature_values):
+    with st.container(border=True):
         st.subheader("Why this prediction")
         exp = shap.Explanation(
-            values=np.array(list(result["shap_values"].values())),
-            base_values=result["base_value"],
-            data=np.array(list(result["feature_values"].values())),
-            feature_names=list(result["shap_values"].keys()),
+            values=np.array(list(shap_values.values())),
+            base_values=base_value,
+            data=np.array(list(feature_values.values())),
+            feature_names=list(shap_values.keys()),
         )
         fig, ax = plt.subplots(figsize=(9, 6))
         shap.plots.waterfall(exp, max_display=12, show=False)
@@ -183,6 +181,167 @@ with tab_screen:
             "Shows each feature's contribution to the underlying model's score, in the "
             "model's own units, starting from the average score across the training data."
         )
+
+
+def _risk_row_style(row):
+    bg = RISK_CHIP_STYLES.get(row["risk_band"], (None,))[0]
+    return [f"background-color: {bg}" if bg else ""] * len(row)
+
+
+st.title("Bankruptcy Risk Screener")
+st.caption(
+    "This tool screens a company's annual financial statement data to estimate "
+    "the likelihood it files for bankruptcy within the next year."
+)
+render_badges([
+    "XGBoost · Calibrated", "SHAP Explainable",
+    "1999–2018 NYSE/NASDAQ firm-years", "Time-Series Validated",
+])
+
+tab_screen, tab_perf, tab_about = st.tabs(
+    ["🔎 Screen a Company", "📈 Model Performance", "📄 About and Limitations"]
+)
+
+with tab_screen:
+    input_mode = st.radio(
+        "Input method",
+        ["CSV Batch Upload", "Manual Entry"],
+        horizontal=True,
+        key="screen_input_mode",
+    )
+
+    if input_mode == "CSV Batch Upload":
+        st.markdown(
+            "Upload a CSV with `company_name`, `year`, and the 18 raw financial fields for one or "
+            "more companies (readable field names or the dataset's `X1`-`X18` names are both accepted)."
+        )
+        csv_template = pd.DataFrame(columns=["company_name", "year", *RAW_DOLLAR_COLS])
+        st.download_button(
+            "Download CSV template",
+            csv_template.to_csv(index=False).encode("utf-8"),
+            file_name="bankruptcy_screening_template.csv",
+            mime="text/csv",
+            key="csv_template_download",
+        )
+        uploaded = st.file_uploader("Choose a CSV file", type="csv", key="csv_upload")
+        csv_latest_only = st.checkbox(
+            "Return only the latest year for each company", value=True, key="csv_latest_only"
+        )
+        if uploaded is not None:
+            try:
+                uploaded_df = pd.read_csv(uploaded)
+            except Exception as exc:
+                st.error("The CSV could not be read.")
+                st.exception(exc)
+            else:
+                st.write("Preview")
+                st.dataframe(uploaded_df.head(20), width="stretch", hide_index=True)
+                if st.button("Run batch predictions", type="primary", key="csv_submit"):
+                    try:
+                        st.session_state["csv_results"] = predict.predict_history(
+                            uploaded_df, latest_only=csv_latest_only
+                        )
+                    except ValueError as exc:
+                        st.session_state.pop("csv_results", None)
+                        st.warning(str(exc))
+
+        if "csv_results" in st.session_state:
+            csv_results = st.session_state["csv_results"]
+            st.divider()
+            elevated_or_high = int(csv_results["risk_band"].isin(["Elevated", "High"]).sum())
+            k1, k2, k3 = st.columns(3)
+            with k1:
+                st.metric("Companies screened", f"{len(csv_results):,}")
+            with k2:
+                st.metric("Elevated / High risk", f"{elevated_or_high:,}")
+            with k3:
+                st.metric("Average probability", f"{csv_results['probability'].mean():.1%}")
+
+            display_results = csv_results.copy()
+            display_results["probability"] = display_results["probability"].map(lambda x: f"{x:.1%}")
+            display_results["threshold"] = display_results["threshold"].map(lambda x: f"{x:.1%}")
+            st.dataframe(
+                display_results.style.apply(_risk_row_style, axis=1),
+                width="stretch", hide_index=True,
+            )
+            st.download_button(
+                "Download prediction results",
+                csv_results.to_csv(index=False).encode("utf-8"),
+                file_name="bankruptcy_predictions.csv",
+                mime="text/csv",
+                key="csv_results_download",
+            )
+
+    else:
+        st.markdown(
+            "Enter one company's financial history, most recent year last. Two or more years let "
+            "trend features (including the 2-year EBITDA slope) compute exactly as they do in training."
+        )
+        hist_company_name = st.text_input("Company name", value="Example Company", key="hist_company_name")
+        number_of_years = st.number_input(
+            "Number of years", min_value=1, max_value=10, value=2, step=1, key="hist_num_years"
+        )
+        examples = load_example_firms()
+        example_labels = [MANUAL_LABEL] + [_example_label(e) for e in examples]
+        st.selectbox(
+            "Load an example test-set firm, or enter figures manually below",
+            example_labels, key="hist_example_choice", on_change=_apply_example_to_history,
+        )
+
+        year_cols = _year_columns(number_of_years)
+        base_bs = st.session_state.get("hist_base_bs")
+        base_inc = st.session_state.get("hist_base_inc")
+        if base_bs is None or list(base_bs.columns) != year_cols:
+            base_bs = _blank_grid(BALANCE_SHEET_FIELDS, year_cols)
+        if base_inc is None or list(base_inc.columns) != year_cols:
+            base_inc = _blank_grid(INCOME_FIELDS, year_cols)
+        grid_key_suffix = f"{int(number_of_years)}_{st.session_state.get('hist_load_version', 0)}"
+
+        year_col_config = {
+            col: st.column_config.NumberColumn(col, format="%.3f") for col in year_cols
+        }
+        with st.container(border=True):
+            st.markdown("**Balance sheet** — rows are line items, columns are years")
+            edited_bs = st.data_editor(
+                base_bs, width="stretch", column_config=year_col_config,
+                key=f"hist_bs_editor_{grid_key_suffix}",
+            )
+        with st.container(border=True):
+            st.markdown("**Income statement** — rows are line items, columns are years")
+            edited_inc = st.data_editor(
+                base_inc, width="stretch", column_config=year_col_config,
+                key=f"hist_inc_editor_{grid_key_suffix}",
+            )
+
+        if st.button("Screen this company", type="primary", key="hist_submit"):
+            combined = pd.concat([edited_bs, edited_inc])
+            history_rows = []
+            for year_col in year_cols:
+                row = {"company_name": hist_company_name.strip() or "Example Company", "year": int(year_col)}
+                for field, label in FIELD_LABELS.items():
+                    row[field] = float(combined.loc[label, year_col])
+                history_rows.append(row)
+            history = pd.DataFrame(history_rows)
+            try:
+                hist_results = predict.predict_history(history, latest_only=True)
+                hist_explanation = predict.explain_history_row(history)
+            except ValueError as exc:
+                st.session_state.pop("hist_result", None)
+                st.warning(str(exc))
+            else:
+                st.session_state["hist_result"] = (hist_results, hist_explanation)
+
+        if "hist_result" in st.session_state:
+            hist_results, hist_explanation = st.session_state["hist_result"]
+            latest_row = hist_results.iloc[0]
+            render_result_panel(
+                latest_row["probability"], latest_row["risk_band"],
+                latest_row["altman_z"], latest_row["altman_zone"],
+            )
+            render_shap_waterfall(
+                hist_explanation["shap_values"], hist_explanation["base_value"],
+                hist_explanation["feature_values"],
+            )
 
 with tab_perf:
     st.subheader("Model Performance")

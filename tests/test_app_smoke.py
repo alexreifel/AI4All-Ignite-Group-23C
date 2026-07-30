@@ -13,6 +13,20 @@ def test_app_runs_without_error():
     assert not at.exception
 
 
+def test_app_defaults_to_csv_batch_upload():
+    at = AppTest.from_file(APP_PATH, default_timeout=60)
+    at.run()
+    assert not at.exception
+    assert at.radio(key="screen_input_mode").value == "CSV Batch Upload"
+
+
+def test_manual_entry_mode_runs_without_error():
+    at = AppTest.from_file(APP_PATH, default_timeout=60)
+    at.session_state["screen_input_mode"] = "Manual Entry"
+    at.run()
+    assert not at.exception
+
+
 def test_predict_one_returns_probability_in_unit_interval():
     financials = {
         "current_assets": 500.0, "cogs": 700.0, "dep_amort": 20.0, "ebitda": 150.0,
