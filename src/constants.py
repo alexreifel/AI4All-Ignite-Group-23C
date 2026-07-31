@@ -60,6 +60,36 @@ FEATURES_LR = [f for f in FEATURES_ALL if f not in ["industry_cluster_1", "altma
 # Altman Z-Score splits.
 FEATURES_DT = [f for f in FEATURES_ALL if f != "altman_z"]
 
+# Human-readable labels for FEATURES_ALL, used to render SHAP explanations
+# understandably in the app. Must cover every key in FEATURES_ALL.
+FEATURE_LABELS = {
+    "altman_x1": "Working capital / Total assets",
+    "altman_x2": "Retained earnings / Total assets",
+    "altman_x3": "EBIT / Total assets",
+    "altman_x4": "Market equity / Total liabilities",
+    "altman_x5": "Sales / Total assets",
+    "roa": "Return on assets",
+    "ebitda_ta": "EBITDA / Total assets",
+    "net_margin": "Net margin",
+    "gross_margin": "Gross margin",
+    "liab_ta": "Total liabilities / Total assets",
+    "ltdebt_ta": "Long-term debt / Total assets",
+    "current_ratio": "Current ratio",
+    "inventory_turnover": "Inventory turnover",
+    "dso": "Days sales outstanding",
+    "altman_z": "Altman Z-Score",
+    "d_ebitda_ta": "Change in EBITDA / TA (YoY)",
+    "d_net_income_ta": "Change in net income / TA (YoY)",
+    "pct_chg_ca": "% change in current assets (YoY)",
+    "ebitda_slope2_ta": "2-year EBITDA / TA slope",
+    "d_inv_turnover": "Change in inventory turnover (YoY)",
+    "consec_neg_ni": "Consecutive years of negative net income",
+    "years_of_history": "Years of financial history available",
+    "inventory_is_zero": "Zero-inventory flag",
+    "log_total_assets": "Log of total assets",
+    "industry_cluster_1": "Industry cluster (unsupervised)",
+}
+
 # Time-based train/val/test split years, inclusive on both ends.
 TRAIN_YEARS = (1999, 2011)
 VAL_YEARS = (2012, 2014)

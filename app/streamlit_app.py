@@ -27,7 +27,7 @@ if str(REPO_ROOT) not in sys.path:
     sys.path.insert(0, str(REPO_ROOT))
 
 from src import predict  # noqa: E402
-from src.constants import RAW_DOLLAR_COLS  # noqa: E402
+from src.constants import FEATURE_LABELS, RAW_DOLLAR_COLS  # noqa: E402
 
 MODELS_DIR = REPO_ROOT / "models"
 MANUAL_LABEL = "-- Enter manually --"
@@ -164,14 +164,17 @@ def render_result_panel(probability, risk_band, altman_z, altman_zone, plain_lan
             st.caption("Zones: distress below 1.81, gray zone 1.81-2.99, safe above 2.99.")
 
 
-def render_shap_waterfall(shap_values, base_value, feature_values):
+def render_shap_waterfall(shap_values, base_value, feature_values, feature_labels=None):
     with st.container(border=True):
         st.subheader("Why this prediction")
+        feature_names = list(shap_values.keys())
+        if feature_labels:
+            feature_names = [feature_labels.get(f, f) for f in feature_names]
         exp = shap.Explanation(
             values=np.array(list(shap_values.values())),
             base_values=base_value,
             data=np.array(list(feature_values.values())),
-            feature_names=list(shap_values.keys()),
+            feature_names=feature_names,
         )
         fig, ax = plt.subplots(figsize=(9, 6))
         shap.plots.waterfall(exp, max_display=12, show=False)
@@ -236,6 +239,7 @@ with tab_screen:
             else:
                 st.write("Preview")
                 st.dataframe(uploaded_df.head(20), width="stretch", hide_index=True)
+                st.session_state["csv_uploaded_df"] = uploaded_df
                 if st.button("Run batch predictions", type="primary", key="csv_submit"):
                     try:
                         st.session_state["csv_results"] = predict.predict_history(
@@ -257,9 +261,8 @@ with tab_screen:
             with k3:
                 st.metric("Average probability", f"{csv_results['probability'].mean():.1%}")
 
-            display_results = csv_results.copy()
+            display_results = csv_results.drop(columns=["threshold"]).copy()
             display_results["probability"] = display_results["probability"].map(lambda x: f"{x:.1%}")
-            display_results["threshold"] = display_results["threshold"].map(lambda x: f"{x:.1%}")
             st.dataframe(
                 display_results.style.apply(_risk_row_style, axis=1),
                 width="stretch", hide_index=True,
@@ -271,6 +274,36 @@ with tab_screen:
                 mime="text/csv",
                 key="csv_results_download",
             )
+
+            st.divider()
+            st.subheader("Explain a company's score")
+            company_names = sorted(csv_results["company_name"].unique())
+            selected_company = st.selectbox(
+                "Choose a company from the batch results",
+                company_names, key="csv_explain_company",
+            )
+            if st.button("Explain this company", key="csv_explain_submit"):
+                try:
+                    st.session_state["csv_explanation"] = predict.explain_history_row(
+                        st.session_state["csv_uploaded_df"], company_name=selected_company,
+                    )
+                except ValueError as exc:
+                    st.session_state.pop("csv_explanation", None)
+                    st.warning(str(exc))
+
+            if "csv_explanation" in st.session_state:
+                csv_explanation = st.session_state["csv_explanation"]
+                if csv_explanation["company_name"] == selected_company:
+                    with st.expander(
+                        f"Why: {csv_explanation['company_name']} ({csv_explanation['year']})",
+                        expanded=True,
+                    ):
+                        render_shap_waterfall(
+                            csv_explanation["shap_values"], csv_explanation["base_value"],
+                            csv_explanation["feature_values"], feature_labels=FEATURE_LABELS,
+                        )
+                else:
+                    st.caption('Selection changed — click "Explain this company" again to refresh.')
 
     else:
         st.markdown(
@@ -340,7 +373,7 @@ with tab_screen:
             )
             render_shap_waterfall(
                 hist_explanation["shap_values"], hist_explanation["base_value"],
-                hist_explanation["feature_values"],
+                hist_explanation["feature_values"], feature_labels=FEATURE_LABELS,
             )
 
 with tab_perf:
