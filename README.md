@@ -12,7 +12,9 @@ For nearly 60 years, the answer has been the Altman Z-Score: a single formula, b
 
 A tool that reads a US public company's yearly financial statements and estimates the chance it files for bankruptcy within the next year. It runs on a calibrated XGBoost model trained on 20 years of NYSE and NASDAQ filings, and we benchmark it against the Altman Z-Score, the formula the industry has leaned on since 1968, to see whether modern machine learning actually does better.
 
-Why it matters: a working early-warning signal gives creditors, investors, and employees months of notice instead of a surprise filing, and a transparent, SHAP-explained tool like this one is a free alternative to opaque commercial credit-risk scores. How this evolved: the project started as exploratory analysis on the raw Kaggle CSV in a single notebook, and the biggest turning point was discovering a label leakage bug, where every historical row of a doomed firm was marked "failed" instead of only its final year. Fixing that reshaped the whole target definition. From there the project grew from a one-off notebook into a tested `src/` package and a Streamlit app, with SHAP explainability added last, once the core model was already validated.
+**Why it matters:** a working early-warning signal gives creditors, investors, and employees months of notice instead of a surprise filing, and a transparent, SHAP-explained tool like this one is a free alternative to opaque commercial credit-risk scores.
+
+**How this evolved:** the project started as exploratory analysis on the raw Kaggle CSV in a single notebook, and the biggest turning point was discovering a label leakage bug, where every historical row of a doomed firm was marked "failed" instead of only its final year. Fixing that reshaped the whole target definition. From there the project grew from a one-off notebook into a tested `src/` package and a Streamlit app, with SHAP explainability added last, once the core model was already validated.
 
 Built by **AI4ALL Ignite Summer 2026, Group 23C**: Michelle Jiang, Alex Reifel, Palak Goindwani, Abdurrahman Oyediran, Rashid Mikidadi, and Eddy.
 
