@@ -16,7 +16,7 @@ A tool that reads a US public company's yearly financial statements and estimate
 
 **How this evolved:** the project started as exploratory analysis on the raw Kaggle CSV in a single notebook, and the biggest turning point was discovering a label leakage bug, where every historical row of a doomed firm was marked "failed" instead of only its final year. Fixing that reshaped the whole target definition. From there the project grew from a one-off notebook into a tested `src/` package and a Streamlit app, with SHAP explainability added last, once the core model was already validated.
 
-Built by **AI4ALL Ignite Summer 2026, Group 23C**: Michelle Jiang, Alex Reifel, Palak Goindwani, Abdurrahman Oyediran, Rashid Mikidadi, and Eddy.
+Built by **AI4ALL Ignite Summer 2026, Group 23C**: Michelle Jiang, Alex Reifel, Palak Goindwani, Abdurrahman Oyediran, Rashid Mikidadi, and Edomias Zerihun.
 
 The full analysis lives in `notebooks/AI4All_Group_23C_Project_Code.ipynb`, which stays the source of truth for every transformation, hyperparameter, and threshold used in the app.
 
@@ -87,9 +87,18 @@ AI4All-Ignite-Group-23C/
 
 ## Documentation
 
-**Data source.** Kaggle American Bankruptcy dataset, 78,682 US public company firm-years (1999-2018) from NYSE and NASDAQ filings. `<!-- TODO: paste the exact Kaggle dataset URL here -->`
+**Data source.** Kaggle American Bankruptcy dataset, 78,682 US public company firm-years (1999-2018) from NYSE and NASDAQ filings: [kaggle.com/datasets/utkarshx27/american-companies-bankruptcy-prediction-dataset](https://www.kaggle.com/datasets/utkarshx27/american-companies-bankruptcy-prediction-dataset).
 
-**Citations.** `<!-- TODO: paste the 3-4 citations already used in the notebook or proposal here, for example Altman's 1968 discriminant-analysis paper, the XGBoost paper, the SHAP paper, and the Kaggle dataset page -->`
+**Citations.**
+
+1. Altman, E. I. (1968). Financial Ratios, Discriminant Analysis and the Prediction of Corporate Bankruptcy. *The Journal of Finance*, 23(4), 589-609.
+2. Shumway, T. (2001). Forecasting Bankruptcy More Accurately: A Simple Hazard Model. *The Journal of Business*, 74(1), 101-124.
+3. Chen, T., & Guestrin, C. (2016). XGBoost: A Scalable Tree Boosting System. *Proceedings of the 22nd ACM SIGKDD*, 785-794.
+4. Lundberg, S. M., & Lee, S.-I. (2017). A Unified Approach to Interpreting Model Predictions. *Advances in Neural Information Processing Systems*, 30.
+5. Lombardo, G. et al. (2022). Machine Learning for Bankruptcy Prediction in the American Stock Market. *Future Internet*, 14(8), 244.
+6. Administrative Office of the U.S. Courts. (2026). Bankruptcy Filings Rise 11 Percent. uscourts.gov.
+7. Hayes, A. (n.d.). Understanding the Altman Z-Score Formula and Its Interpretation. Investopedia.
+8. Data Source: Lombardo et al. (2022). American Companies Bankruptcy Prediction Dataset. Kaggle: [kaggle.com/datasets/utkarshx27/american-companies-bankruptcy-prediction-dataset](https://www.kaggle.com/datasets/utkarshx27/american-companies-bankruptcy-prediction-dataset).
 
 **Code.** This repository: [github.com/alexreifel/AI4All-Ignite-Group-23C](https://github.com/alexreifel/AI4All-Ignite-Group-23C).
 
