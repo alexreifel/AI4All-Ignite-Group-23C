@@ -1,6 +1,6 @@
 """Shared constants for the bankruptcy prediction pipeline.
 
-These lists mirror the notebook exactly (AI4All_Group_23C_Project_Code.ipynb).
+These lists mirror the notebooks/ pipeline exactly (see notebooks/04_feature_engineering.ipynb).
 They live in one place so validate.py, features.py, train.py, and predict.py
 cannot drift apart on column names or feature order.
 """

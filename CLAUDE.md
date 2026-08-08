@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-AI4All Group 23C project predicting US corporate bankruptcy from annual financial statement data (`american_bankruptcy.csv`, 78,682 firm-years, 1999–2018). The entire ML pipeline lives in one Jupyter notebook: `AI4All_Group_23C_Project_Code.ipynb`.
+AI4All Group 23C project predicting US corporate bankruptcy from annual financial statement data (`data/american_bankruptcy.csv`, 78,682 firm-years, 1999–2018). The ML pipeline is documented as six staged Jupyter notebooks under `notebooks/` (one per pipeline section) and reproduced as tested, importable modules under `src/`.
 
 ## Development Commands
 
@@ -18,20 +18,20 @@ pytest tests/test_leakage.py::test_caps_and_medians_match_train_window_only_comp
 ruff check .                      # lint (matches CI; excludes notebooks/)
 
 streamlit run app/streamlit_app.py   # launch the app against models/ artifacts
-python -m src.train                  # retrain from american_bankruptcy.csv, overwrites models/
+python -m src.train                  # retrain from data/american_bankruptcy.csv, overwrites models/
 ```
 
-`pyproject.toml` sets `pythonpath = ["."]` for pytest and configures ruff (line-length 110, `E`/`F`/`W`, notebook excluded). CI (`.github/workflows/ci.yml`) runs `ruff check .` then `pytest -q` on every push/PR.
+`pyproject.toml` sets `pythonpath = ["."]` for pytest and configures ruff (line-length 110, `E`/`F`/`W`, `notebooks/` excluded). CI (`.github/workflows/ci.yml`) runs `ruff check .` then `pytest -q` on every push/PR.
 
 ## Running the Notebook
 
-The original, untouched analysis lives in `notebooks/AI4All_Group_23C_Project_Code.ipynb` (Colab or local Jupyter). It is the source of truth for every transformation, hyperparameter, and threshold — `src/` is a from-scratch reproduction of the same pipeline as importable, tested modules, and `notebooks/` is excluded from ruff and not otherwise touched.
+The original analysis is split into six staged notebooks under `notebooks/` (`01_loading_data.ipynb` through `06_evaluation.ipynb`), one per pipeline section. Together they are the source of truth for every transformation, hyperparameter, and threshold; `src/` is a from-scratch reproduction of the same pipeline as importable, tested modules, and `notebooks/` is excluded from ruff and not otherwise touched.
 
 ```bash
-jupyter notebook notebooks/AI4All_Group_23C_Project_Code.ipynb
+jupyter notebook notebooks/01_loading_data.ipynb
 ```
 
-The CSV must be in the same directory as the notebook. All cells must be run in order — later cells depend on state built by earlier ones.
+Run all six notebooks in numeric order, all cells top to bottom in each before moving to the next. Each notebook loads what it needs from the one before it and saves what the next one needs, via small joblib files under `notebooks/_state/` (generated automatically, gitignored). See `notebooks/README.md` for details. `01_loading_data.ipynb` reads `data/american_bankruptcy.csv`.
 
 ## Code Architecture
 

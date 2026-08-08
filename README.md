@@ -18,7 +18,7 @@ A tool that reads a US public company's yearly financial statements and estimate
 
 Built by **AI4ALL Ignite Summer 2026, Group 23C**: Michelle Jiang, Alex Reifel, Palak Goindwani, Abdurrahman Oyediran, Rashid Mikidadi, and Edomias Zerihun.
 
-The full analysis lives in `notebooks/AI4All_Group_23C_Project_Code.ipynb`, which stays the source of truth for every transformation, hyperparameter, and threshold used in the app.
+The full analysis lives in `notebooks/` (six staged notebooks, `01_loading_data.ipynb` through `06_evaluation.ipynb`), which stays the source of truth for every transformation, hyperparameter, and threshold used in the app.
 
 ## How to Get Started
 
@@ -51,7 +51,9 @@ pytest -q
 streamlit run app/streamlit_app.py
 ```
 
-To retrain the model from scratch, run `python -m src.train`. This reads `american_bankruptcy.csv` from the repo root, runs the whole pipeline again, and overwrites everything in `models/`.
+To retrain the model from scratch, run `python -m src.train`. This reads `data/american_bankruptcy.csv`, runs the whole pipeline again, and overwrites everything in `models/`.
+
+To see the original analysis itself instead of just its output, run the six staged notebooks under `notebooks/` in order (see `notebooks/README.md`).
 
 ## What We Learned
 
@@ -69,7 +71,8 @@ Modern ML really does beat the old formula, but not by magic. Our XGBoost model 
 
 ```
 AI4All-Ignite-Group-23C/
-  american_bankruptcy.csv   raw dataset
+  data/
+    american_bankruptcy.csv   raw dataset
   src/
     constants.py            shared column lists and split boundaries
     validate.py             schema and label-structure checks
@@ -81,7 +84,7 @@ AI4All-Ignite-Group-23C/
   tests/                    pytest suite
   models/                   serialized model artifacts (committed, not regenerated in CI)
   notebooks/
-    AI4All_Group_23C_Project_Code.ipynb   original notebook, untouched
+    01_loading_data.ipynb ... 06_evaluation.ipynb   original analysis, staged in run order
   .github/workflows/ci.yml  ruff + pytest on push and PR
 ```
 

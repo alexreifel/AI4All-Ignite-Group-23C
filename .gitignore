@@ -7,3 +7,4 @@ __pycache__/
 venv/
 .venv/
 sample_data/
+notebooks/_state/

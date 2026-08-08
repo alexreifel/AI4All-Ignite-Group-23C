@@ -1,13 +1,10 @@
 """Reproduces the notebook's pipeline end to end and serializes deployment artifacts.
 
-This mirrors AI4All_Group_23C_Project_Code.ipynb exactly: same hyperparameter
-grids, same random states, same splits, same formulas. The notebook itself
-has two bugs (results/test_scores are never initialized, and the Logistic
-Regression cell references cv_folds before it exists) which are just
-ordering/initialization fixes here, not logic changes. The Logistic
-Regression cell also never fits a final model; it is completed here the
-same way Decision Tree and Random Forest are, using its own declared
-feature set (FEATURES_LR) for both the CV grid and the final fit.
+This mirrors the six staged notebooks in notebooks/ exactly: same hyperparameter
+grids, same random states, same splits, same formulas. The Logistic Regression
+step is written here as its own function (fit_logreg), the same way Decision
+Tree and Random Forest are, using its own declared feature set (FEATURES_LR)
+for both the CV grid and the final fit.
 
 Run as: python -m src.train
 """
@@ -61,7 +58,7 @@ warnings.filterwarnings("ignore")
 np.random.seed(42)
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
-DEFAULT_DATA_PATH = REPO_ROOT / "american_bankruptcy.csv"
+DEFAULT_DATA_PATH = REPO_ROOT / "data" / "american_bankruptcy.csv"
 DEFAULT_MODELS_DIR = REPO_ROOT / "models"
 
 
