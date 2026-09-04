@@ -4,17 +4,21 @@
 
 ## Overview
 
-You've probably heard of Lehman Brothers, or Enron, or Sears. What you may not have heard of are the hundreds of other public companies that quietly file for bankruptcy every year without ever making the news.
+The Bankruptcy Risk Screener estimates whether a U.S. public company will file for bankruptcy within the next year using its financial statements.
 
-Firms fail for all kinds of reasons: a debt load that outgrows the business, a downturn that never reverses, or just years of shrinking margins nobody caught in time. With that much uncertainty built into the market, how are investors, auditors, and employees supposed to know whether the company they're tied to is thriving or quietly circling the drain?
+We trained and evaluated a set of machine-learning models on 78,682 NYSE and NASDAQ firm-year observations from 1999–2018, then compared them with the classical Altman Z-Score. The final application uses a calibrated XGBoost model with SHAP explanations so users can see both the predicted risk and the financial signals driving it.
 
-For nearly 60 years, the answer has been the Altman Z-Score: a single formula, built in 1968 from five financial ratios pulled straight off a balance sheet, that scores a company's bankruptcy risk in one number. It's simple, transparent, and still in use today. But finance has changed a lot since 1968. Is a decades-old linear formula still the sharpest tool available, or can modern machine learning read the same financial statements more accurately? That's the question this project set out to answer.
+Because bankruptcy is extremely rare in this dataset — roughly 0.77% of firm-years after correcting the target — the project focuses on PR-AUC, F1, calibration, and precision/recall rather than headline accuracy.
 
-A tool that reads a US public company's yearly financial statements and estimates the chance it files for bankruptcy within the next year. It runs on a calibrated XGBoost model trained on 20 years of NYSE and NASDAQ filings, and we benchmark it against the Altman Z-Score, the formula the industry has leaned on since 1968, to see whether modern machine learning actually does better.
+### Key Results
 
-**Why it matters:** a working early-warning signal gives creditors, investors, and employees months of notice instead of a surprise filing, and a transparent, SHAP-explained tool like this one is a free alternative to opaque commercial credit-risk scores.
+- Corrected the raw target definition so only the final observed year of a company that failed is treated as a positive bankruptcy event, leaving roughly 609 true positives across 78,682 firm-years.
+- The primary XGBoost model reached **0.905 ROC-AUC, 0.200 PR-AUC, and 0.255 F1** on the held-out 2015–2018 test set.
+- The deployed calibrated model reached **0.902 ROC-AUC and 0.189 PR-AUC**, while reducing Brier score from **0.079 to 0.0089**.
+- XGBoost outperformed the Altman Z-Score and the tested Logistic Regression, Decision Tree, Random Forest, and SMOTE-XGBoost baselines on PR-AUC and F1.
+- Built the project from an exploratory notebook into a reproducible package with six staged notebooks, a `src/` pipeline, pytest tests, Ruff linting, GitHub Actions CI, a Streamlit interface, and SHAP explanations.
 
-**How this evolved:** the project started as exploratory analysis on the raw Kaggle CSV in a single notebook, and the biggest turning point was discovering a label leakage bug, where every historical row of a doomed firm was marked "failed" instead of only its final year. Fixing that reshaped the whole target definition. From there the project grew from a one-off notebook into a tested `src/` package and a Streamlit app, with SHAP explainability added last, once the core model was already validated.
+This is a screening and prioritization tool, not an automated credit or investment decision system.
 
 Built by **AI4ALL Ignite Summer 2026, Group 23C**: Michelle Jiang, Alex Reifel, Palak Goindwani, Abdurrahman Oyediran, Rashid Mikidadi, and Edomias Zerihun.
 
@@ -67,7 +71,7 @@ To see the original analysis itself instead of just its output, run the six stag
 
 **Testing and linting:** pytest, ruff.
 
-**CI/CD:** GitHub Actions.
+**CI:** GitHub Actions.
 
 ## Repo Structure
 
@@ -134,17 +138,15 @@ AI4All-Ignite-Group-23C/
 
 **Calibration:** Platt scaling (sigmoid) fit on the 2012-2014 validation set, wrapping the tuning-stage model rather than a train-plus-validation refit, so the probabilities are calibrated on data the model never trained on. This is the version deployed in the app. The decision threshold is the F1-optimal point on validation, in calibrated-probability units.
 
-**Test metrics (2015-2018):** see the Model Performance tab in the app, or `models/metrics.json`, for the full comparison across Logistic Regression, the Altman Z baseline, XGBoost (primary), XGBoost with SMOTE, Decision Tree, Random Forest, and the deployed calibrated model. The test set has only 119 true positives, so these numbers carry real uncertainty and a handful of different outcomes would move them noticeably.
+**Test metrics (2015-2018):** the test set has only 119 true positives, so these numbers carry real uncertainty and a handful of different outcomes would move them noticeably.
 
-| Model | ROC-AUC | PR-AUC | F1 | Precision | Recall |
-|---|---|---|---|---|---|
-| Altman Z (1968 baseline) | 0.794 | 0.025 | 0.041 | 0.021 | 0.882 |
-| Logistic Regression | 0.769 | 0.027 | 0.066 | 0.036 | 0.361 |
-| Decision Tree (depth=3) | 0.883 | 0.058 | 0.124 | 0.068 | 0.723 |
-| Random Forest | 0.888 | 0.116 | 0.160 | 0.105 | 0.345 |
-| XGBoost (SMOTE) | 0.844 | 0.061 | 0.134 | 0.120 | 0.151 |
-| XGBoost (primary) | 0.905 | 0.200 | 0.255 | 0.181 | 0.429 |
-| **XGBoost (calibrated, deployed)** | 0.902 | 0.189 | 0.223 | 0.169 | 0.328 |
+- **Altman Z (1968 baseline):** ROC-AUC 0.794 · PR-AUC 0.025 · F1 0.041 · precision 0.021 · recall 0.882
+- **Logistic Regression:** ROC-AUC 0.769 · PR-AUC 0.027 · F1 0.066 · precision 0.036 · recall 0.361
+- **Decision Tree (depth=3):** ROC-AUC 0.883 · PR-AUC 0.058 · F1 0.124 · precision 0.068 · recall 0.723
+- **Random Forest:** ROC-AUC 0.888 · PR-AUC 0.116 · F1 0.160 · precision 0.105 · recall 0.345
+- **XGBoost (SMOTE):** ROC-AUC 0.844 · PR-AUC 0.061 · F1 0.134 · precision 0.120 · recall 0.151
+- **XGBoost (primary):** ROC-AUC 0.905 · PR-AUC 0.200 · F1 0.255 · precision 0.181 · recall 0.429
+- **XGBoost (calibrated, deployed):** ROC-AUC 0.902 · PR-AUC 0.189 · F1 0.223 · precision 0.169 · recall 0.328
 
 What this reveals: ROC-AUC is inflated by the huge majority class at this base rate, so PR-AUC and F1 are the metrics that actually matter here. XGBoost roughly doubles Logistic Regression's PR-AUC and beats Altman's F1 by about 5x, meaning it ranks true bankruptcies far higher among its top alerts. Altman's headline recall of 0.88 looks strong, but it comes with precision of only 0.02, meaning it flags almost every company and can't actually prioritize review on its own. The deployed, calibrated model trades a little of the primary model's raw F1 for trustworthy probabilities: calibration drops the Brier score from 0.079 raw to 0.0089 calibrated, which is why this version, not the higher-F1 primary model, is what's shipped in the app.
 
@@ -174,7 +176,7 @@ Cleaning the labels mattered more than any fancy model. The raw data marked ever
 
 How you split the data is a decision, not a detail. Because the same firm shows up across many years, a random split would let the model peek at a company's future. Splitting by time instead, with the 2008 crisis sitting only in the training years, forced the model to prove it still works in calmer periods.
 
-Modern ML really does beat the old formula, but not by magic. Our XGBoost model outscored the 1968 Altman Z-Score on the test set, and SHAP showed it weighs the same financial signals quite differently than Altman did. Still, it flags a lot of false alarms, so we treat it as a screening tool that points humans toward companies worth a closer look, not a final verdict.
+On this held-out test set, modern ML outperformed the old formula, but not by magic. Our XGBoost model outscored the 1968 Altman Z-Score on the test set, and SHAP showed it weighs the same financial signals quite differently than Altman did. Still, it flags a lot of false alarms, so we treat it as a screening tool that points humans toward companies worth a closer look, not a final verdict.
 
 ## Next Steps
 
