@@ -4,7 +4,14 @@ __pycache__/
 .ruff_cache/
 .ipynb_checkpoints/
 .DS_Store
+
 venv/
 .venv/
+
+.env
+.env.*
+!.env.example
+.streamlit/secrets.toml
+
 sample_data/
 notebooks/_state/
